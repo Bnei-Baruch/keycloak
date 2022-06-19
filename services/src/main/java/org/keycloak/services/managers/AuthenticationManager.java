@@ -774,7 +774,7 @@ public class AuthenticationManager {
         String encoded = keycloakSession.tokens().encode(identityCookieToken);
         boolean secureOnly = realm.getSslRequired().isRequired(connection);
         int maxAge = NewCookie.DEFAULT_MAX_AGE;
-        if (session != null && session.isRememberMe()) {
+        if (session != null) {
             maxAge = realm.getSsoSessionMaxLifespanRememberMe() > 0 ? realm.getSsoSessionMaxLifespanRememberMe() : realm.getSsoSessionMaxLifespan();
         }
         logger.debugv("Create login cookie - name: {0}, path: {1}, max-age: {2}", KEYCLOAK_IDENTITY_COOKIE, cookiePath, maxAge);
@@ -787,7 +787,7 @@ public class AuthenticationManager {
         }
         // THIS SHOULD NOT BE A HTTPONLY COOKIE!  It is used for OpenID Connect Iframe Session support!
         // Max age should be set to the max lifespan of the session as it's used to invalidate old-sessions on re-login
-        int sessionCookieMaxAge = session.isRememberMe() && realm.getSsoSessionMaxLifespanRememberMe() > 0 ? realm.getSsoSessionMaxLifespanRememberMe() : realm.getSsoSessionMaxLifespan();
+        int sessionCookieMaxAge = realm.getSsoSessionMaxLifespanRememberMe() > 0 ? realm.getSsoSessionMaxLifespanRememberMe() : realm.getSsoSessionMaxLifespan();
         CookieHelper.addCookie(KEYCLOAK_SESSION_COOKIE, sessionCookieValue, cookiePath, null, null, sessionCookieMaxAge, secureOnly, false, SameSiteAttributeValue.NONE);
         P3PHelper.addP3PHeader();
     }
