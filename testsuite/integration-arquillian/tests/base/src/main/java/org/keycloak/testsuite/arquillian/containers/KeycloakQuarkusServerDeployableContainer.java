@@ -8,13 +8,15 @@ import javax.net.ssl.SSLSocketFactory;
 import javax.net.ssl.TrustManager;
 import javax.net.ssl.X509TrustManager;
 import java.io.File;
-import java.io.FileInputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.net.HttpURLConnection;
 import java.net.MalformedURLException;
+import java.net.URISyntaxException;
 import java.net.URL;
 import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.nio.file.StandardCopyOption;
 import java.security.KeyManagementException;
 import java.security.NoSuchAlgorithmException;
@@ -22,7 +24,6 @@ import java.security.cert.X509Certificate;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
-import java.util.Properties;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 
@@ -45,6 +46,8 @@ import org.keycloak.testsuite.arquillian.SuiteContext;
  * @author mhajas
  */
 public class KeycloakQuarkusServerDeployableContainer implements DeployableContainer<KeycloakQuarkusConfiguration> {
+
+    private static final String AUTH_SERVER_QUARKUS_MAP_STORAGE_PROFILE = "auth.server.quarkus.mapStorage.profile";
 
     private static final Logger log = Logger.getLogger(KeycloakQuarkusServerDeployableContainer.class);
 
@@ -70,6 +73,7 @@ public class KeycloakQuarkusServerDeployableContainer implements DeployableConta
     @Override
     public void start() throws LifecycleException {
         try {
+            importRealm();
             container = startContainer();
             waitForReadiness();
         } catch (Exception e) {
@@ -127,6 +131,28 @@ public class KeycloakQuarkusServerDeployableContainer implements DeployableConta
 
     }
 
+    private void importRealm() throws IOException, URISyntaxException {
+        if (suiteContext.get().isAuthServerMigrationEnabled() && configuration.getImportFile() != null) {
+            final String importFileName = configuration.getImportFile();
+
+            log.infof("Importing realm from file '%s'", importFileName);
+
+            final URL url = getClass().getResource("/migration-test/" + importFileName);
+            if (url == null) throw new IllegalArgumentException("Cannot find migration import file");
+
+            final Path path = Paths.get(url.toURI());
+            final File wrkDir = configuration.getProvidersPath().resolve("bin").toFile();
+            final List<String> commands = new ArrayList<>();
+
+            commands.add(getCommand());
+            commands.add("import");
+            commands.add("--file=" + wrkDir.toPath().relativize(path));
+
+            final ProcessBuilder pb = new ProcessBuilder(commands);
+            pb.directory(wrkDir).inheritIO().start();
+        }
+    }
+
     private Process startContainer() throws IOException {
         ProcessBuilder pb = new ProcessBuilder(getProcessCommands());
         File wrkDir = configuration.getProvidersPath().resolve("bin").toFile();
@@ -153,6 +179,7 @@ public class KeycloakQuarkusServerDeployableContainer implements DeployableConta
         commands.add(getCommand());
         commands.add("-v");
         commands.add("start");
+        commands.add("--optimized");
         commands.add("--http-enabled=true");
 
         if (Boolean.parseBoolean(System.getProperty("auth.server.debug", "false"))) {
@@ -171,23 +198,52 @@ public class KeycloakQuarkusServerDeployableContainer implements DeployableConta
             commands.add("-Djboss.node.name=" + configuration.getRoute());
         }
 
-        // only run auto-build during restarts or when running cluster tests
+        String mapStorageProfile = System.getProperty(AUTH_SERVER_QUARKUS_MAP_STORAGE_PROFILE);
+        // only run build during restarts or when running cluster tests
+
         if (restart.get() || "ha".equals(System.getProperty("auth.server.quarkus.cluster.config"))) {
-            commands.add("--auto-build");
+            commands.removeIf("--optimized"::equals);
             commands.add("--http-relative-path=/auth");
 
-            String cacheMode = System.getProperty("auth.server.quarkus.cluster.config", "local");
+            if (mapStorageProfile == null) {
+                String cacheMode = System.getProperty("auth.server.quarkus.cluster.config", "local");
 
-            if ("local".equals(cacheMode)) {
-                commands.add("--cache=local");
-            } else {
-                commands.add("--cache-config-file=cluster-" + cacheMode + ".xml");
+                if ("local".equals(cacheMode)) {
+                    commands.add("--cache=local");
+                } else {
+                    commands.add("--cache-config-file=cluster-" + cacheMode + ".xml");
+                }
             }
         }
 
+        addStorageOptions(commands);
+
         commands.addAll(getAdditionalBuildArgs());
 
+        log.debugf("Quarkus parameters: %s", commands);
+
         return commands.toArray(new String[0]);
+    }
+
+    private void addStorageOptions(List<String> commands) {
+        String mapStorageProfile = System.getProperty(AUTH_SERVER_QUARKUS_MAP_STORAGE_PROFILE);
+
+        if (mapStorageProfile != null) {
+            switch (mapStorageProfile) {
+                case "chm":
+                    commands.add("--storage=" + mapStorageProfile);
+                    break;
+                case "jpa":
+                    commands.add("--storage=" + mapStorageProfile);
+                    commands.add("--db-username=" + System.getProperty("keycloak.map.storage.connectionsJpa.url"));
+                    commands.add("--db-password=" + System.getProperty("keycloak.map.storage.connectionsJpa.user"));
+                    commands.add("--db-url=" + System.getProperty("keycloak.map.storage.connectionsJpa.password"));
+                case "hotrod":
+                    commands.add("--storage=" + mapStorageProfile);
+                    // TODO: URL / username / password
+                    break;
+            }
+        }
     }
 
     private void waitForReadiness() throws MalformedURLException, LifecycleException {

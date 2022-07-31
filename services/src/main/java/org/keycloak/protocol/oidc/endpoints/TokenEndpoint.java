@@ -116,6 +116,8 @@ import java.util.Objects;
 import java.util.function.Supplier;
 import java.util.stream.Stream;
 
+import static org.keycloak.utils.LockObjectsForModification.lockUserSessionsForModification;
+
 /**
  * @author <a href="mailto:sthorger@redhat.com">Stian Thorgersen</a>
  */
@@ -506,7 +508,7 @@ public class TokenEndpoint {
             res = responseBuilder.build();
 
             if (!responseBuilder.isOfflineToken()) {
-                UserSessionModel userSession = session.sessions().getUserSession(realm, res.getSessionState());
+                UserSessionModel userSession = lockUserSessionsForModification(session, () -> session.sessions().getUserSession(realm, res.getSessionState()));
                 AuthenticatedClientSessionModel clientSession = userSession.getAuthenticatedClientSessionByClient(client.getId());
                 updateClientSession(clientSession);
                 updateUserSessionFromClientAuth(userSession);
@@ -734,8 +736,17 @@ public class TokenEndpoint {
         }
 
         // TODO : do the same as codeToToken()
-        AccessTokenResponse res = responseBuilder.build();
-
+        AccessTokenResponse res = null;
+        try {
+            res = responseBuilder.build();
+        } catch (RuntimeException re) {
+            if ("can not get encryption KEK".equals(re.getMessage())) {
+                throw new CorsErrorResponseException(cors, OAuthErrorException.INVALID_REQUEST,
+                        "can not get encryption KEK", Response.Status.BAD_REQUEST);
+            } else {
+                throw re;
+            }
+        }
         event.success();
 
         return cors.builder(Response.ok(res, MediaType.APPLICATION_JSON_TYPE)).build();

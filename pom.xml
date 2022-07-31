@@ -75,6 +75,12 @@
         <apache.mime4j.version>0.6</apache.mime4j.version>
         <jboss.dmr.version>1.5.1.Final</jboss.dmr.version>
         <bouncycastle.version>1.68</bouncycastle.version>
+
+        <!-- TODO Are these correct versions? -->
+        <bouncycastle.fips.version>1.0.2.3</bouncycastle.fips.version>
+        <bouncycastle.pkixfips.version>1.0.5</bouncycastle.pkixfips.version>
+        <bouncycastle.tlsfips.version>1.0.12.2</bouncycastle.tlsfips.version>
+
         <cxf.version>3.3.10</cxf.version>
         <cxf.jetty.version>3.3.10</cxf.jetty.version>
         <cxf.jaxrs.version>3.3.10</cxf.jaxrs.version>
@@ -99,7 +105,7 @@
         <jboss.spec.javax.xml.bind.jboss-jaxb-api_2.3_spec.version>2.0.1.Final</jboss.spec.javax.xml.bind.jboss-jaxb-api_2.3_spec.version>
         <jboss.spec.javax.servlet.jsp.jboss-jsp-api_2.3_spec.version>2.0.0.Final</jboss.spec.javax.servlet.jsp.jboss-jsp-api_2.3_spec.version>
         <log4j.version>1.2.17</log4j.version>
-        <resteasy.version>3.15.1.Final</resteasy.version>
+        <resteasy.version>4.7.4.Final</resteasy.version>
         <resteasy.undertow.version>${resteasy.version}</resteasy.undertow.version>
         <owasp.html.sanitizer.version>20211018.2</owasp.html.sanitizer.version>
         <slf4j-api.version>1.7.30</slf4j-api.version>
@@ -147,7 +153,7 @@
 
         <!-- Databases -->
         <mysql.version>8.0.23</mysql.version>
-        <mysql.driver.version>8.0.23</mysql.driver.version>
+        <mysql.driver.version>8.0.28</mysql.driver.version>
         <postgresql.version>13.2</postgresql.version>
         <postgresql.driver.version>42.3.3</postgresql.driver.version>
         <mariadb.version>10.3.27</mariadb.version>
@@ -264,6 +270,7 @@
         <module>boms</module>
         <module>common</module>
         <module>core</module>
+        <module>crypto</module>
         <module>dependencies</module>
         <module>docs</module>
         <module>server-spi</module>
@@ -357,6 +364,21 @@
                 <version>${bouncycastle.version}</version>
             </dependency>
             <dependency>
+                <groupId>org.bouncycastle</groupId>
+                <artifactId>bc-fips</artifactId>
+                <version>${bouncycastle.fips.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>org.bouncycastle</groupId>
+                <artifactId>bctls-fips</artifactId>
+                <version>${bouncycastle.tlsfips.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>org.bouncycastle</groupId>
+                <artifactId>bcpkix-fips</artifactId>
+                <version>${bouncycastle.pkixfips.version}</version>
+            </dependency>
+            <dependency>
                 <groupId>com.github.ua-parser</groupId>
                 <artifactId>uap-java</artifactId>
                 <version>${ua-parser.version}</version>
@@ -378,7 +400,7 @@
             </dependency>
             <dependency>
                 <groupId>org.jboss.resteasy</groupId>
-                <artifactId>resteasy-jaxrs</artifactId>
+                <artifactId>resteasy-core</artifactId>
                 <version>${resteasy.version}</version>
                 <exclusions>
                     <exclusion>
@@ -1037,6 +1059,12 @@
             </dependency>
             <dependency>
                 <groupId>org.keycloak</groupId>
+                <artifactId>keycloak-core</artifactId>
+                <type>test-jar</type>
+                <version>${project.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>org.keycloak</groupId>
                 <artifactId>keycloak-config-api</artifactId>
                 <version>${project.version}</version>
             </dependency>
@@ -1261,6 +1289,21 @@
             <dependency>
                 <groupId>org.keycloak</groupId>
                 <artifactId>keycloak-model-jpa</artifactId>
+                <version>${project.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>org.keycloak</groupId>
+                <artifactId>keycloak-model-legacy</artifactId>
+                <version>${project.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>org.keycloak</groupId>
+                <artifactId>keycloak-model-legacy-private</artifactId>
+                <version>${project.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>org.keycloak</groupId>
+                <artifactId>keycloak-model-legacy-services</artifactId>
                 <version>${project.version}</version>
             </dependency>
             <dependency>
@@ -1563,6 +1606,16 @@
             </dependency>
             <dependency>
                 <groupId>org.keycloak</groupId>
+                <artifactId>keycloak-crypto-default</artifactId>
+                <version>${project.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>org.keycloak</groupId>
+                <artifactId>keycloak-crypto-fips1402</artifactId>
+                <version>${project.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>org.keycloak</groupId>
                 <artifactId>keycloak-admin-cli</artifactId>
                 <version>${project.version}</version>
             </dependency>
@@ -1723,6 +1776,7 @@
                         <forkMode>once</forkMode>
                         <argLine>-Djava.awt.headless=true ${surefire.memory.settings} ${surefire.system.args} -Duser.language=en -Duser.region=US</argLine>
                         <runOrder>alphabetical</runOrder>
+                        <failIfNoSpecifiedTests>false</failIfNoSpecifiedTests>
                     </configuration>
                 </plugin>
                 <plugin>
@@ -1888,16 +1942,6 @@
         </profile>
 
         <profile>
-            <id>config-api</id>
-            <activation>
-                <jdk>[11,)</jdk>
-            </activation>
-            <modules>
-                <module>config-api</module>
-            </modules>
-        </profile>
-
-        <profile>
             <id>quarkus</id>
             <activation>
                 <jdk>[11,)</jdk>
@@ -2034,6 +2078,21 @@
         </profile>
 
         <profile>
+            <id>built-with-jdk-9-or-later</id>
+            <activation>
+                <!-- only activate this on JDK 9 or later as this option is unknown for JDK 8, and as it is not necessary for JDK 8 -->
+                <!-- support for running with JDK 8 is still necessary for some downstream integration tests -->
+                <jdk>(9,)</jdk>
+            </activation>
+            <properties>
+                <!-- Minimum Java version supported for running Keycloak -->
+                <!-- maven.compiler.target and maven.compiler.source already set to 1.8 in the parent pom -->
+                <!-- other modules will configure a higher Java version (for example, Quarkus) -->
+                <maven.compiler.release>8</maven.compiler.release>
+            </properties>
+        </profile>
+
+        <profile>
             <id>nexus-staging</id>
             <build>
                 <plugins>
@@ -2074,6 +2133,30 @@
                     </plugin>
                 </plugins>
             </build>
+        </profile>
+
+        <profile>
+            <id>crypto-default</id>
+            <activation>
+                <property>
+                    <name>!fips140-2</name>
+                </property>
+            </activation>
+            <properties>
+                <keycloak.crypto.artifactId>keycloak-crypto-default</keycloak.crypto.artifactId>
+            </properties>
+        </profile>
+
+        <profile>
+            <id>fips140-2</id>
+            <activation>
+                <property>
+                    <name>fips140-2</name>
+                </property>
+            </activation>
+            <properties>
+                <keycloak.crypto.artifactId>keycloak-crypto-fips1402</keycloak.crypto.artifactId>
+            </properties>
         </profile>
 
     </profiles>

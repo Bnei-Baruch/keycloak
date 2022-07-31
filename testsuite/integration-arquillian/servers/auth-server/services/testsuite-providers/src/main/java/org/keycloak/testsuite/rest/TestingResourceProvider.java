@@ -201,7 +201,7 @@ public class TestingResourceProvider implements RealmResourceProvider {
     @Path("/revert-testing-infinispan-time-service")
     @Produces(MediaType.APPLICATION_JSON)
     public Response revertTestingInfinispanTimeService() {
-        InfinispanTestUtil.revertTimeService();
+        InfinispanTestUtil.revertTimeService(session);
         return Response.noContent().build();
     }
 
@@ -631,7 +631,7 @@ public class TestingResourceProvider implements RealmResourceProvider {
         if (realm == null) return false;
         UserProvider userProvider = session.getProvider(UserProvider.class);
         UserModel user = userProvider.getUserByUsername(realm, userName);
-        return session.userCredentialManager().isValid(realm, user, UserCredentialModel.password(password));
+        return user.credentialManager().isValid(UserCredentialModel.password(password));
     }
 
     @GET

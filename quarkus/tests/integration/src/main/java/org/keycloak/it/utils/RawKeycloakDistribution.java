@@ -36,7 +36,9 @@ import java.security.SecureRandom;
 import java.security.cert.X509Certificate;
 import java.util.ArrayList;
 import java.util.Comparator;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Properties;
 import java.util.concurrent.*;
 import java.util.function.Consumer;
@@ -77,6 +79,7 @@ public final class RawKeycloakDistribution implements KeycloakDistribution {
     private boolean removeBuildOptionsAfterBuild;
     private ExecutorService outputExecutor;
     private boolean inited = false;
+    private Map<String, String> envVars = new HashMap<>();
 
     public RawKeycloakDistribution(boolean debug, boolean manualStop, boolean reCreate, boolean removeBuildOptionsAfterBuild) {
         this.debug = debug;
@@ -106,12 +109,15 @@ public final class RawKeycloakDistribution implements KeycloakDistribution {
             throw new RuntimeException("Failed to start the server", cause);
         } finally {
             if (arguments.contains(Build.NAME) && removeBuildOptionsAfterBuild) {
-                for (PropertyMapper mapper : PropertyMappers.getBuildTimeMappers()) {
-                    removeProperty(mapper.getFrom().substring(3));
+                for (List<PropertyMapper> mappers : PropertyMappers.getBuildTimeMappers().values()) {
+                    for (PropertyMapper mapper : mappers) {
+                        removeProperty(mapper.getFrom().substring(3));
+                    }
                 }
             }
             if (!manualStop) {
                 stop();
+                envVars.clear();
             }
         }
 
@@ -132,7 +138,6 @@ public final class RawKeycloakDistribution implements KeycloakDistribution {
                 keycloak.destroy();
                 keycloak.waitFor(10, TimeUnit.SECONDS);
                 exitCode = keycloak.exitValue();
-
             } catch (Exception cause) {
                 if (Environment.isWindows()) {
                     try {
@@ -317,8 +322,8 @@ public final class RawKeycloakDistribution implements KeycloakDistribution {
         outputStream.clear();
         errorStream.clear();
         exitCode = -1;
-        keycloak = null;
         shutdownOutputExecutor();
+        keycloak = null;
     }
 
     private Path prepareDistribution() {
@@ -412,6 +417,12 @@ public final class RawKeycloakDistribution implements KeycloakDistribution {
         builder.environment().put("KEYCLOAK_ADMIN", "admin");
         builder.environment().put("KEYCLOAK_ADMIN_PASSWORD", "admin");
 
+        if (debug) {
+            builder.environment().put("DEBUG_SUSPEND", "y");
+        }
+
+        builder.environment().putAll(envVars);
+
         keycloak = builder.start();
     }
 
@@ -423,6 +434,11 @@ public final class RawKeycloakDistribution implements KeycloakDistribution {
     @Override
     public void setProperty(String key, String value) {
         updateProperties(properties -> properties.put(key, value), distPath.resolve("conf").resolve("keycloak.conf").toFile());
+    }
+
+    @Override
+    public void setEnvVar(String key, String value) {
+        this.envVars.put(key, value);
     }
 
     @Override

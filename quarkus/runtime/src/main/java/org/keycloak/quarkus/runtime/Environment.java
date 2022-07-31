@@ -220,10 +220,17 @@ public final class Environment {
     }
 
     public static boolean isDistribution() {
+        if (isQuarkusDevMode()) {
+            return false;
+        }
         return getHomeDir() != null;
     }
 
     public static boolean isRebuildCheck() {
-        return Boolean.getBoolean("kc.config.rebuild-and-exit");
+        return Boolean.getBoolean("kc.config.build-and-exit");
+    }
+
+    public static boolean isRebuilt() {
+        return Boolean.getBoolean("kc.config.built");
     }
 }
