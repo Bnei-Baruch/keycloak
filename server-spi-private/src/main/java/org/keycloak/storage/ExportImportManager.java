@@ -17,10 +17,14 @@
 
 package org.keycloak.storage;
 
+import org.keycloak.exportimport.ExportAdapter;
+import org.keycloak.exportimport.ExportOptions;
 import org.keycloak.models.RealmModel;
 import org.keycloak.models.UserModel;
 import org.keycloak.representations.idm.RealmRepresentation;
 import org.keycloak.representations.idm.UserRepresentation;
+
+import java.io.InputStream;
 
 /**
  * Manage importing and updating of realms for the legacy store.
@@ -33,4 +37,8 @@ public interface ExportImportManager {
     void updateRealm(RealmRepresentation rep, RealmModel realm);
 
     UserModel createUser(RealmModel realm, UserRepresentation userRep);
+
+    void exportRealm(RealmModel realm, ExportOptions options, ExportAdapter callback);
+
+    RealmModel importRealm(InputStream requestBody);
 }

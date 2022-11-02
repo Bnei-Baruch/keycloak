@@ -21,6 +21,9 @@ import org.jboss.logging.Logger;
 import org.keycloak.common.enums.SslRequired;
 import org.keycloak.common.util.MultivaluedHashMap;
 import org.keycloak.component.ComponentModel;
+import org.keycloak.exportimport.ExportAdapter;
+import org.keycloak.exportimport.ExportOptions;
+import org.keycloak.exportimport.util.ExportUtils;
 import org.keycloak.keys.KeyProvider;
 import org.keycloak.migration.MigrationProvider;
 import org.keycloak.migration.migrators.MigrateTo8_0_0;
@@ -38,6 +41,7 @@ import org.keycloak.models.FederatedIdentityModel;
 import org.keycloak.models.GroupModel;
 import org.keycloak.models.KeycloakSession;
 import org.keycloak.models.LDAPConstants;
+import org.keycloak.models.ModelException;
 import org.keycloak.models.OAuth2DeviceConfig;
 import org.keycloak.models.OTPPolicy;
 import org.keycloak.models.ParConfig;
@@ -83,14 +87,19 @@ import org.keycloak.representations.idm.UserFederationMapperRepresentation;
 import org.keycloak.representations.idm.UserFederationProviderRepresentation;
 import org.keycloak.representations.idm.UserRepresentation;
 import org.keycloak.storage.ExportImportManager;
+import org.keycloak.storage.ImportRealmFromRepresentation;
 import org.keycloak.storage.UserStoragePrivateUtil;
 import org.keycloak.storage.UserStorageProvider;
 import org.keycloak.storage.UserStorageProviderModel;
 import org.keycloak.storage.UserStorageUtil;
 import org.keycloak.storage.federated.UserFederatedStorageProvider;
 import org.keycloak.userprofile.UserProfileProvider;
+import org.keycloak.util.JsonSerialization;
 import org.keycloak.validation.ValidationUtil;
 
+import javax.ws.rs.core.MediaType;
+import java.io.IOException;
+import java.io.InputStream;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
@@ -108,6 +117,7 @@ import static org.keycloak.models.utils.RepresentationToModel.createGroups;
 import static org.keycloak.models.utils.RepresentationToModel.createRoleMappings;
 import static org.keycloak.models.utils.RepresentationToModel.importGroup;
 import static org.keycloak.models.utils.RepresentationToModel.importRoles;
+import static org.keycloak.models.utils.StripSecretsUtils.stripForExport;
 
 /**
  * This wraps the functionality about export/import for legacy storage. This will be handled differently for the new map storage,
@@ -121,6 +131,28 @@ public class LegacyExportImportManager implements ExportImportManager {
 
     public LegacyExportImportManager(KeycloakSession session) {
         this.session = session;
+    }
+
+    public void exportRealm(RealmModel realm, ExportOptions options, ExportAdapter callback) {
+        callback.setType(MediaType.APPLICATION_JSON);
+        callback.writeToOutputStream(outputStream -> {
+            RealmRepresentation rep = ExportUtils.exportRealm(session, realm, options, false);
+            stripForExport(session, rep);
+            JsonSerialization.writeValueToStream(outputStream, rep);
+            outputStream.close();
+        });
+    }
+
+    @Override
+    public RealmModel importRealm(InputStream requestBody) {
+        RealmRepresentation rep;
+        try {
+            rep = JsonSerialization.readValue(requestBody, RealmRepresentation.class);
+        } catch (IOException e) {
+            throw new ModelException("unable to read contents from stream", e);
+        }
+        logger.debugv("importRealm: {0}", rep.getRealm());
+        return ImportRealmFromRepresentation.fire(session, rep);
     }
 
     @Override
@@ -1374,8 +1406,8 @@ public class LegacyExportImportManager implements ExportImportManager {
         if (rep.getOtpPolicyAlgorithm() != null) policy.setAlgorithm(rep.getOtpPolicyAlgorithm());
         if (rep.getOtpPolicyDigits() != null) policy.setDigits(rep.getOtpPolicyDigits());
         if (rep.getOtpPolicyPeriod() != null) policy.setPeriod(rep.getOtpPolicyPeriod());
+        if (rep.isOtpPolicyCodeReusable() != null) policy.setCodeReusable(rep.isOtpPolicyCodeReusable());
         return policy;
-
     }
 
 

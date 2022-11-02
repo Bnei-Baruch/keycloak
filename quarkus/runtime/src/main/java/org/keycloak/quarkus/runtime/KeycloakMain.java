@@ -63,7 +63,7 @@ public class KeycloakMain implements QuarkusApplication {
     private static final String KEYCLOAK_ADMIN_PASSWORD_ENV_VAR = "KEYCLOAK_ADMIN_PASSWORD";
 
     public static void main(String[] args) {
-        System.setProperty("kc.version", Version.VERSION_KEYCLOAK);
+        System.setProperty("kc.version", Version.VERSION);
         List<String> cliArgs = Picocli.parseArgs(args);
 
         if (cliArgs.isEmpty()) {
@@ -80,7 +80,7 @@ public class KeycloakMain implements QuarkusApplication {
                 return;
             }
 
-            start(errorHandler, errStream);
+            start(errorHandler, errStream, args);
 
             return;
         }
@@ -94,7 +94,7 @@ public class KeycloakMain implements QuarkusApplication {
         return cliArgs.size() == 2 && cliArgs.get(0).equals(Start.NAME) && cliArgs.stream().anyMatch(OPTIMIZED_BUILD_OPTION_LONG::equals);
     }
 
-    public static void start(ExecutionExceptionHandler errorHandler, PrintWriter errStream) {
+    public static void start(ExecutionExceptionHandler errorHandler, PrintWriter errStream, String[] args) {
         ClassLoader originalCl = Thread.currentThread().getContextClassLoader();
 
         try {
@@ -112,7 +112,7 @@ public class KeycloakMain implements QuarkusApplication {
                     // as we are replacing the default exit handler, we need to force exit
                     System.exit(exitCode);
                 }
-            });
+            }, args);
         } catch (Throwable cause) {
             errorHandler.error(errStream,
                     String.format("Unexpected error when starting the server in (%s) mode", getKeycloakModeFromProfile(getProfileOrDefault("prod"))),

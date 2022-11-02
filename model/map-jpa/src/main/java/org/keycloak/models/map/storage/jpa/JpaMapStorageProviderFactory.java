@@ -53,7 +53,7 @@ import org.keycloak.common.util.StringPropertyReplacer;
 import org.keycloak.component.AmphibianProviderFactory;
 import org.keycloak.events.Event;
 import org.keycloak.events.admin.AdminEvent;
-import org.keycloak.models.ActionTokenValueModel;
+import org.keycloak.models.SingleUseObjectValueModel;
 import org.keycloak.models.ClientModel;
 import org.keycloak.models.ClientScopeModel;
 import org.keycloak.models.GroupModel;
@@ -106,17 +106,14 @@ import org.keycloak.models.map.storage.jpa.authorization.scope.JpaScopeMapKeyclo
 import org.keycloak.models.map.storage.jpa.authorization.scope.entity.JpaScopeEntity;
 import org.keycloak.models.map.storage.jpa.client.JpaClientMapKeycloakTransaction;
 import org.keycloak.models.map.storage.jpa.client.entity.JpaClientEntity;
-import org.keycloak.models.map.storage.jpa.clientscope.JpaClientScopeMapKeycloakTransaction;
-import org.keycloak.models.map.storage.jpa.clientscope.entity.JpaClientScopeEntity;
+import org.keycloak.models.map.storage.jpa.clientScope.JpaClientScopeMapKeycloakTransaction;
+import org.keycloak.models.map.storage.jpa.clientScope.entity.JpaClientScopeEntity;
 import org.keycloak.models.map.storage.jpa.event.admin.JpaAdminEventMapKeycloakTransaction;
 import org.keycloak.models.map.storage.jpa.event.admin.entity.JpaAdminEventEntity;
 import org.keycloak.models.map.storage.jpa.event.auth.JpaAuthEventMapKeycloakTransaction;
 import org.keycloak.models.map.storage.jpa.event.auth.entity.JpaAuthEventEntity;
 import org.keycloak.models.map.storage.jpa.group.JpaGroupMapKeycloakTransaction;
 import org.keycloak.models.map.storage.jpa.group.entity.JpaGroupEntity;
-import org.keycloak.models.map.storage.jpa.hibernate.listeners.JpaAutoFlushListener;
-import org.keycloak.models.map.storage.jpa.hibernate.listeners.JpaEntityVersionListener;
-import org.keycloak.models.map.storage.jpa.hibernate.listeners.JpaOptimisticLockingListener;
 import org.keycloak.models.map.storage.jpa.loginFailure.JpaUserLoginFailureMapKeycloakTransaction;
 import org.keycloak.models.map.storage.jpa.loginFailure.entity.JpaUserLoginFailureEntity;
 import org.keycloak.models.map.storage.jpa.realm.JpaRealmMapKeycloakTransaction;
@@ -235,7 +232,7 @@ public class JpaMapStorageProviderFactory implements
         //roles
         MODEL_TO_TX.put(RoleModel.class,                        JpaRoleMapKeycloakTransaction::new);
         //single-use-objects
-        MODEL_TO_TX.put(ActionTokenValueModel.class,            JpaSingleUseObjectMapKeycloakTransaction::new);
+        MODEL_TO_TX.put(SingleUseObjectValueModel.class,            JpaSingleUseObjectMapKeycloakTransaction::new);
         //user-login-failures
         MODEL_TO_TX.put(UserLoginFailureModel.class,            JpaUserLoginFailureMapKeycloakTransaction::new);
         //users
@@ -307,6 +304,7 @@ public class JpaMapStorageProviderFactory implements
             synchronized (this) {
                 if (emf == null) {
                     this.emf = createEntityManagerFactory();
+                    JpaMapUtils.addSpecificNamedQueries(emf);
                 }
             }
         }

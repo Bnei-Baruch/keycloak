@@ -176,12 +176,10 @@ public class OfflineSessionPersistenceTest extends KeycloakModelTest {
     @RequireProvider(value = UserSessionProvider.class, only = InfinispanUserSessionProviderFactory.PROVIDER_ID)
     public void testPersistenceMultipleNodesClientSessionAtSameNode() throws InterruptedException {
         int numClients = 2;
-        List<String> clientIds = withRealm(realmId, (session, realm) -> {
-            return IntStream.range(0, numClients)
+        List<String> clientIds = withRealm(realmId, (session, realm) -> IntStream.range(0, numClients)
               .mapToObj(cid -> session.clients().addClient(realm, "client-" + cid))
               .map(ClientModel::getId)
-              .collect(Collectors.toList());
-        });
+              .collect(Collectors.toList()));
 
         // Shutdown factory -> enforce session persistence
         closeKeycloakSessionFactory();
@@ -234,12 +232,10 @@ public class OfflineSessionPersistenceTest extends KeycloakModelTest {
     @RequireProvider(UserSessionPersisterProvider.class)
     @RequireProvider(value = UserSessionProvider.class, only = InfinispanUserSessionProviderFactory.PROVIDER_ID)
     public void testPersistenceMultipleNodesClientSessionsAtRandomNode() throws InterruptedException {
-        List<String> clientIds = withRealm(realmId, (session, realm) -> {
-            return IntStream.range(0, 5)
+        List<String> clientIds = withRealm(realmId, (session, realm) -> IntStream.range(0, 5)
               .mapToObj(cid -> session.clients().addClient(realm, "client-" + cid))
               .map(ClientModel::getId)
-              .collect(Collectors.toList());
-        });
+              .collect(Collectors.toList()));
         List<String> offlineSessionIds = createOfflineSessions(realmId, userIds);
 
         // Shutdown factory -> enforce session persistence
@@ -261,8 +257,9 @@ public class OfflineSessionPersistenceTest extends KeycloakModelTest {
                     // IllegalLifecycleStateException: ISPN000324: Cache 'clientSessions' is in 'STOPPING' state and this is an invocation not belonging to an
                     // on-going transaction, so it does not accept new invocations."
                     // also: org.infinispan.commons.CacheException: java.lang.IllegalStateException: Read commands must ignore leavers
-                    if ((ex.getCause() != null && ex.getCause().getMessage().contains("ISPN000324") ||
-                            (ex instanceof CacheException && ex.getMessage().contains("Read commands must ignore leavers")))) {
+                    if ((ex.getCause() != null && ex.getCause().getMessage().contains("ISPN000324")) || 
+                            (ex.getMessage() != null && ex.getMessage().contains("ISPN000217")) ||
+                            (ex instanceof CacheException && ex.getMessage().contains("Read commands must ignore leavers"))) {
                         log.warn("invocation failed, skipping. Retrying might lead to a 'Unique index or primary key violation' when the offline session has already been stored in the DB in the current session", ex);
                     } else {
                         throw ex;

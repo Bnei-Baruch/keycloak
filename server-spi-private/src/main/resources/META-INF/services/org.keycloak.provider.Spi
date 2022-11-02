@@ -17,14 +17,12 @@
 
 org.keycloak.component.ComponentFactorySpi
 org.keycloak.provider.ExceptionConverterSpi
-org.keycloak.storage.federated.UserFederatedStorageProviderSpi
 org.keycloak.models.ClientSpi
 org.keycloak.models.ClientScopeSpi
 org.keycloak.models.GroupSpi
 org.keycloak.models.RealmSpi
 org.keycloak.models.RoleSpi
 org.keycloak.models.DeploymentStateSpi
-org.keycloak.models.ActionTokenStoreSpi
 org.keycloak.models.OAuth2DeviceUserCodeSpi
 org.keycloak.models.SingleUseObjectSpi
 org.keycloak.models.UserSessionSpi
@@ -61,6 +59,7 @@ org.keycloak.authentication.ClientAuthenticatorSpi
 org.keycloak.authentication.RequiredActionSpi
 org.keycloak.authentication.FormAuthenticatorSpi
 org.keycloak.authentication.FormActionSpi
+org.keycloak.authentication.otp.OTPApplicationSpi
 org.keycloak.authorization.policy.provider.PolicySpi
 org.keycloak.authorization.store.StoreFactorySpi
 org.keycloak.authorization.AuthorizationSpi

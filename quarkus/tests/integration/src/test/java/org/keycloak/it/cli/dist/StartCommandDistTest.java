@@ -47,7 +47,7 @@ public class StartCommandDistTest extends StartCommandTest {
     @Test
     @Launch({ "start", "--http-enabled=true" })
     void failNoHostnameNotSet(LaunchResult result) {
-        assertTrue(result.getErrorOutput().contains("ERROR: Strict hostname resolution configured but no hostname was set"),
+        assertTrue(result.getErrorOutput().contains("ERROR: Strict hostname resolution configured but no hostname setting provided"),
                 () -> "The Output:\n" + result.getOutput() + "doesn't contains the expected string.");
     }
 
@@ -63,6 +63,13 @@ public class StartCommandDistTest extends StartCommandTest {
         cliResult.assertMessage(KeycloakDistribution.SCRIPT_CMD + " start " + OPTIMIZED_BUILD_OPTION_LONG + " --http-enabled=true --hostname-strict=false");
         assertFalse(cliResult.getOutput().contains("--cache"));
         cliResult.assertStarted();
+    }
+
+    @Test
+    @Launch({ "start", "--optimized", "--http-enabled=true", "--hostname-strict=false", "--cache=local" })
+    void testStartUsingOptimizedDoesNotAllowBuildOptions(LaunchResult result) {
+        CLIResult cliResult = (CLIResult) result;
+        cliResult.assertError("Unknown option: '--cache'");
     }
 
 }

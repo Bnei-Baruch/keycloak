@@ -31,7 +31,8 @@
     <packaging>pom</packaging>
 
     <modules>
-        <module>fips1402</module>
         <module>default</module>
+        <module>fips1402</module>
+        <module>elytron</module>
     </modules>
 </project>

@@ -23,6 +23,7 @@ import static org.keycloak.quarkus.runtime.Environment.forceTestLaunchMode;
 import static org.keycloak.quarkus.runtime.cli.command.Main.CONFIG_FILE_LONG_NAME;
 import static org.keycloak.quarkus.runtime.cli.command.Main.CONFIG_FILE_SHORT_NAME;
 
+import java.lang.reflect.Method;
 import java.nio.file.Path;
 import java.util.Arrays;
 import java.util.Collections;
@@ -35,6 +36,7 @@ import io.quarkus.runtime.configuration.QuarkusConfigFactory;
 import org.junit.jupiter.api.extension.ExtensionContext;
 import org.junit.jupiter.api.extension.ParameterContext;
 import org.junit.jupiter.api.extension.ParameterResolutionException;
+import org.junit.jupiter.api.extension.ReflectiveInvocationContext;
 import org.keycloak.it.utils.RawDistRootPath;
 import org.keycloak.it.utils.KeycloakDistribution;
 import org.keycloak.it.utils.RawKeycloakDistribution;
@@ -92,6 +94,8 @@ public class CLITestExtension extends QuarkusMainTestExtension {
                 dist = createDistribution(distConfig);
             }
 
+            copyTestProvider(context.getRequiredTestClass().getAnnotation(TestProvider.class));
+            copyTestProvider(context.getRequiredTestMethod().getAnnotation(TestProvider.class));
             onBeforeStartDistribution(context.getRequiredTestClass().getAnnotation(BeforeStartDistribution.class));
             onBeforeStartDistribution(context.getRequiredTestMethod().getAnnotation(BeforeStartDistribution.class));
 
@@ -101,6 +105,30 @@ public class CLITestExtension extends QuarkusMainTestExtension {
         } else {
             configureProfile(context);
             super.beforeEach(context);
+        }
+    }
+
+    private void copyTestProvider(TestProvider provider) {
+        if (provider == null) {
+            return;
+        }
+
+        if (dist instanceof RawKeycloakDistribution) {
+            try {
+                ((RawKeycloakDistribution) dist).copyProvider(provider.value().getDeclaredConstructor().newInstance());
+            } catch (Exception cause) {
+                throw new RuntimeException("Failed to instantiate test provider: " + provider.getClass(), cause);
+            }
+        }
+    }
+
+    @Override
+    public void interceptTestMethod(Invocation<Void> invocation,
+            ReflectiveInvocationContext<Method> invocationContext, ExtensionContext extensionContext) throws Throwable {
+        if (dist == null) {
+            super.interceptTestMethod(invocation, invocationContext, extensionContext);
+        } else {
+            invocation.proceed();
         }
     }
 

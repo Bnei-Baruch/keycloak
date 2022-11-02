@@ -21,7 +21,7 @@ import java.util.function.Predicate;
 public final class PropertyMappers {
 
     public static String VALUE_MASK = "*******";
-    static final MappersConfig MAPPERS = new MappersConfig();
+    private static final MappersConfig MAPPERS = new MappersConfig();
 
     private PropertyMappers(){}
 
@@ -38,6 +38,8 @@ public final class PropertyMappers {
         MAPPERS.addAll(LoggingPropertyMappers.getMappers());
         MAPPERS.addAll(TransactionPropertyMappers.getTransactionPropertyMappers());
         MAPPERS.addAll(StoragePropertyMappers.getMappers());
+        MAPPERS.addAll(ClassLoaderPropertyMappers.getMappers());
+        MAPPERS.addAll(SecurityPropertyMappers.getMappers());
     }
 
     public static ConfigValue getValue(ConfigSourceInterceptorContext context, String name) {
